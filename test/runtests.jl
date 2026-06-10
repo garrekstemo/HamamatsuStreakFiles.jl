@@ -190,6 +190,13 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
 
         # pairs before any section header are dropped, not a crash
         @test isempty(parse_comment("x=1,y=2"))
+
+        # empty values (real HPD-TA emits e.g. ScalingXScalingFile= when undefined)
+        meta5 = parse_comment("[A],x=,y=2")
+        @test meta5["A"]["x"] == ""
+        @test meta5["A"]["y"] == "2"
+        @test parse_comment("[A],x=")["A"]["x"] == ""        # trailing '='
+        @test parse_comment("[A],x=1[")["A"]["x"] == "1"     # truncated '[' at end
     end
 
 end

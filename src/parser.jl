@@ -35,13 +35,18 @@ function _parse_comment(comment::AbstractString)
                     i = nextind(comment, closeq)
                 end
             else
-                stop = findnext(ch -> ch == ',' || ch == '[', comment, min(vstart, n))
-                if stop === nothing || vstart > n
-                    val = vstart > n ? "" : comment[vstart:n]
+                if vstart > n
+                    val = ""
                     i = nextind(comment, n)
                 else
-                    val = comment[vstart:prevind(comment, stop)]
-                    i = stop
+                    stop = findnext(ch -> ch == ',' || ch == '[', comment, vstart)
+                    if stop === nothing
+                        val = comment[vstart:n]
+                        i = nextind(comment, n)
+                    else
+                        val = comment[vstart:prevind(comment, stop)]
+                        i = stop
+                    end
                 end
             end
             if current !== nothing && !isempty(key)
