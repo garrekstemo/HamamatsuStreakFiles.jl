@@ -2,6 +2,7 @@ using Test
 using HamamatsuStreakFiles
 using Dates
 using Aqua
+using Makie
 
 # Fixed comment size keeps embedded "#offset,count" scaling offsets deterministic.
 const COMMENT_LEN = 512
@@ -265,6 +266,39 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         @test P("garbage", "13:17:16") == DateTime(1)
         @test P("2026/13/40", "00:00:00") == DateTime(1)   # invalid fields, no throw
         @test P("26/06/02", "13:17:16") == DateTime(1)     # 2-digit year rejected
+    end
+
+    @testset "Makie extension" begin
+        s = StreakImage(write_img(make_img()))
+
+        # convert_arguments flips display copies to ascending wavelength;
+        # the struct itself keeps on-disk (descending) order
+        @test Makie.convert_arguments(Makie.CellGrid(), s) ==
+              Makie.convert_arguments(Makie.CellGrid(),
+                                      reverse(s.wavelength), s.time,
+                                      reverse(s.counts; dims=1))
+        @test s.wavelength[1] > s.wavelength[end]   # struct untouched
+
+        # heatmap(s) works end-to-end without touching fields
+        fap = Makie.heatmap(s)
+        @test fap isa Makie.FigureAxisPlot
+
+        # plot defaults: unit-labelled axes
+        fig, ax, hm = plot(s)
+        @test fig isa Makie.Figure
+        @test ax.xlabel[] == "Wavelength (nm)"
+        @test ax.ylabel[] == "Time (ns)"
+
+        # user axis NamedTuple overrides defaults
+        _, ax2, _ = plot(s; axis = (ylabel = "Delay (ns)",))
+        @test ax2.ylabel[] == "Delay (ns)"
+
+        # ascending input passes through unflipped
+        asc = StreakImage(write_img(make_img(xscale = Float32[400, 410, 420, 430])))
+        @test Makie.convert_arguments(Makie.CellGrid(), asc) ==
+              Makie.convert_arguments(Makie.CellGrid(),
+                                      asc.wavelength, asc.time, asc.counts)
+        @test plot(asc) isa Makie.FigureAxisPlot
     end
 
     @testset "StreakImage(path) round-trip" begin
