@@ -126,6 +126,36 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
 
         @test_throws ArgumentError HamamatsuStreakFiles._read_header(make_img(magic="XM"))
         @test_throws ArgumentError HamamatsuStreakFiles._read_header(make_img()[1:40])
+        @test HamamatsuStreakFiles._read_header(make_img(magic="IM\0")).width == 4   # trailing NUL tolerated
+    end
+
+    @testset "image data" begin
+        b = make_img()                      # pixels 1:12, width 4, height 3
+        hdr = HamamatsuStreakFiles._read_header(b)
+        counts = HamamatsuStreakFiles._read_image(b, hdr)
+        @test counts isa Matrix{Float64}
+        @test size(counts) == (4, 3)
+        # width (wavelength) is the fast axis: first stored values fill column 1
+        @test counts[:, 1] == [1.0, 2.0, 3.0, 4.0]
+        @test counts[1, 2] == 5.0
+        @test counts[4, 3] == 12.0
+
+        # UInt8 (type=0) and UInt32 (type=3) pixel dtypes
+        b8 = make_img(type=0)
+        h8 = HamamatsuStreakFiles._read_header(b8)
+        @test HamamatsuStreakFiles._read_image(b8, h8)[2, 1] == 2.0
+        b32 = make_img(type=3, pixels=collect(70000:70011))
+        h32 = HamamatsuStreakFiles._read_header(b32)
+        @test HamamatsuStreakFiles._read_image(b32, h32)[1, 1] == 70000.0
+
+        # compressed type=1 unsupported; unknown codes rejected
+        @test_throws ArgumentError HamamatsuStreakFiles._pixel_type(1)
+        @test_throws ArgumentError HamamatsuStreakFiles._pixel_type(7)
+
+        # truncated image data
+        bt = make_img(truncate_at = 64 + COMMENT_LEN + 5)
+        @test_throws ArgumentError HamamatsuStreakFiles._read_image(
+            bt, HamamatsuStreakFiles._read_header(bt))
     end
 
 end

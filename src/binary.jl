@@ -29,3 +29,36 @@ function _read_header(bytes::Vector{UInt8})
         Int(_read_le(UInt16, bytes, 12)),
     )
 end
+
+# Pixel dtype table for the .img header `type` field — the HPD-TA FileType
+# enum: 0=UInt8, 1=compressed (unsupported, no open decompressor exists),
+# 2=UInt16, 3=UInt32. There is no signed-int or Float32 *image* dtype; Float32
+# appears only as the scaling-array element type. NOTE: this table must NOT be
+# reused for .his files, whose dataType enum differs (1 means UInt8 there).
+function _pixel_type(code::Int)
+    code == 0 && return UInt8
+    code == 2 && return UInt16
+    code == 3 && return UInt32
+    code == 1 && throw(ArgumentError(
+        "Hamamatsu .img: compressed image data (type=1) is not supported"))
+    throw(ArgumentError("Hamamatsu .img: unknown pixel type code $code"))
+end
+
+# Read the pixel block into counts[wavelength, time] (Float64). The data is
+# stored row-major with width (wavelength) as the fast axis, so filling a
+# (width, height) matrix in Julia's column-major linear order is a direct copy.
+function _read_image(bytes::Vector{UInt8}, hdr::ImgHeader)
+    T = _pixel_type(hdr.type)
+    npix = hdr.width * hdr.height
+    start = 64 + hdr.comment_len
+    nbytes = npix * sizeof(T)
+    start + nbytes <= length(bytes) || throw(ArgumentError(
+        "Hamamatsu .img: image data truncated (need $(start + nbytes) bytes, " *
+        "file has $(length(bytes)))"))
+    raw = reinterpret(T, bytes[start+1:start+nbytes])
+    counts = Matrix{Float64}(undef, hdr.width, hdr.height)
+    for i in eachindex(raw)
+        counts[i] = Float64(ltoh(raw[i]))
+    end
+    return counts
+end
