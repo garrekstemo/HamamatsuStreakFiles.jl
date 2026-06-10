@@ -36,7 +36,8 @@ by counts. Available when Makie is loaded; load a backend (`using CairoMakie`
 or `using GLMakie`) first. Returns a `FigureAxisPlot` that destructures into
 `(figure, axis, plot)`.
 
-Axis defaults: `xlabel = "Wavelength (<xunits>)"`, `ylabel = "Time (<yunits>)"`.
+Axis defaults: `xlabel = "Wavelength (<xunits>)"`, `ylabel = "Time (<yunits>)"`,
+plus a colorbar labelled with `zunits`.
 Pass an `axis` NamedTuple to override; extra keyword arguments are forwarded to
 `Makie.heatmap` (e.g. `colormap`, `colorrange`).
 
@@ -54,10 +55,12 @@ function Makie.plot(s::StreakImage; axis::NamedTuple = NamedTuple(), kwargs...)
         xlabel = _label("Wavelength", s.xunits),
         ylabel = _label("Time", s.yunits),
     )
-    return Makie.heatmap(x, s.time, z;
+    fap = Makie.heatmap(x, s.time, z;
         axis = merge(default_axis, axis),
         kwargs...,
     )
+    Makie.Colorbar(fap.figure[1, 2], fap.plot; label = s.zunits)
+    return fap
 end
 
 end # module

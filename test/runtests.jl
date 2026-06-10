@@ -334,6 +334,7 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         @test fig isa Makie.Figure
         @test ax.xlabel[] == "Wavelength (nm)"
         @test ax.ylabel[] == "Time (ns)"
+        @test any(c -> c isa Makie.Colorbar, fig.content)   # spec §7: colorbar present
 
         # user axis NamedTuple overrides defaults
         _, ax2, _ = plot(s; axis = (ylabel = "Delay (ns)",))
