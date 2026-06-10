@@ -345,6 +345,11 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
               Makie.convert_arguments(Makie.CellGrid(),
                                       asc.wavelength, asc.time, asc.counts)
         @test plot(asc) isa Makie.FigureAxisPlot
+
+        # non-monotonic axis warns (display would be misleading)
+        nonmono = StreakImage(write_img(make_img(xscale = Float32[500, 700, 400, 600])))
+        @test_logs (:warn, r"non-monotonic") match_mode = :any Makie.convert_arguments(
+            Makie.CellGrid(), nonmono)
     end
 
 end

@@ -8,9 +8,15 @@ using Makie
 # heatmap requires sorted axis vectors.
 function _ascending(s::StreakImage)
     if length(s.wavelength) >= 2 && s.wavelength[1] > s.wavelength[end]
-        return reverse(s.wavelength), reverse(s.counts; dims=1)
+        x = reverse(s.wavelength)
+        z = reverse(s.counts; dims=1)
+    else
+        x = s.wavelength
+        z = s.counts
     end
-    return s.wavelength, s.counts
+    issorted(x) || @warn "HamamatsuStreakFiles: non-monotonic wavelength axis; " *
+        "heatmap cell placement may be misleading"
+    return x, z
 end
 
 _label(name, unit) = isempty(unit) ? name : string(name, " (", unit, ")")
