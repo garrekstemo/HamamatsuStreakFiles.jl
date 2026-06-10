@@ -4,8 +4,6 @@ using Dates
 
 export AbstractStreakImage, StreakImage
 
-abstract type AbstractStreakImage end
-
-struct StreakImage <: AbstractStreakImage end
+include("types.jl")
 
 end # module
