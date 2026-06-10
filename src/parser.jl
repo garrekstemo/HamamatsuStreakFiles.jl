@@ -109,18 +109,20 @@ function _resolve_axis(bytes::Vector{UInt8}, scaling::Dict{String, String},
         if off === nothing || cnt === nothing
             @warn "Hamamatsu .img: cannot parse scaling reference $(repr(ref)); " *
                 "using linear axis"
-        elseif off < 0 || off + 4cnt > length(bytes)
-            @warn "Hamamatsu .img: scaling array out of bounds " *
-                "(offset $off, count $cnt); using linear axis"
         elseif cnt != n
             @warn "Hamamatsu .img: scaling array count $cnt does not match axis " *
                 "length $n; using linear axis"
+        elseif off < 0 || off > length(bytes) || off + 4cnt > length(bytes)
+            @warn "Hamamatsu .img: scaling array out of bounds " *
+                "(offset $off, count $cnt); using linear axis"
         else
             return Float64.(ltoh.(reinterpret(Float32, bytes[off+1:off+4cnt]))), unit
         end
         return _linear_axis(scaling, axis, n)
     end
 
+    # ref comes from the file's comment block; absolute or ".." refs resolve
+    # outside dir. Acceptable for a trusted-lab-file reader — read-only access.
     sidecar = joinpath(dir, ref)
     if isfile(sidecar)
         raw = read(sidecar)

@@ -232,6 +232,9 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
             D("ScalingXType" => "2", "ScalingXScalingFile" => "#abc"))
         @test_logs (:warn, r"does not match") match_mode = :any R(
             D("ScalingXType" => "2", "ScalingXScalingFile" => "#600,3"))
+        @test_logs (:warn, r"out of bounds") match_mode = :any R(
+            D("ScalingXType" => "2",
+              "ScalingXScalingFile" => "#9223372036854775000,4"))
 
         # type=2 promised a table but no ref given => warn + fallback
         @test_logs (:warn, r"no Scaling") match_mode = :any R(D("ScalingXType" => "2"))
