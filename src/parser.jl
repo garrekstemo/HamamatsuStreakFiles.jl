@@ -150,6 +150,7 @@ function _parse_datetime(datestr::AbstractString, timestr::AbstractString)
     any(isnothing, nums) && return DateTime(1)
     a, b, c = nums
     y, m, d = a > 999 ? (a, b, c) : (c, b, a)
+    y >= 1900 || return DateTime(1)
     hms = match(r"^(\d+):(\d+):(\d+)", timestr)
     h, mi, sec = hms === nothing ? (0, 0, 0) :
         (parse(Int, hms[1]), parse(Int, hms[2]), parse(Int, hms[3]))

@@ -264,6 +264,7 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         @test P("", "13:17:16") == DateTime(1)
         @test P("garbage", "13:17:16") == DateTime(1)
         @test P("2026/13/40", "00:00:00") == DateTime(1)   # invalid fields, no throw
+        @test P("26/06/02", "13:17:16") == DateTime(1)     # 2-digit year rejected
     end
 
     @testset "StreakImage(path) round-trip" begin
