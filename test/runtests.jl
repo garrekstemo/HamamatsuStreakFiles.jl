@@ -199,4 +199,58 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         @test parse_comment("[A],x=1[")["A"]["x"] == "1"     # truncated '[' at end
     end
 
+    @testset "scaling resolution" begin
+        b = make_img()
+        D(pairs...) = Dict{String, String}(pairs...)
+        R(scaling; n=4, dir=mktempdir()) =
+            HamamatsuStreakFiles._resolve_axis(b, scaling, "X", n; dir)
+
+        # embedded "#offset,count" table (descending values preserved)
+        @test R(D("ScalingXType" => "2", "ScalingXUnit" => "nm",
+                  "ScalingXScalingFile" => "#600,4")) ==
+              ([700.0, 690.0, 680.0, 670.0], "nm")
+
+        # type=1: linear from Scale/Offset — ScalingXScale is honored
+        @test R(D("ScalingXType" => "1", "ScalingXScale" => "0.5",
+                  "ScalingXOffset" => "100", "ScalingXUnit" => "nm")) ==
+              ([100.0, 100.5, 101.0, 101.5], "nm")
+
+        # scale absent or zero => pixel-index axis, unit "px"
+        @test R(D("ScalingXType" => "1")) == ([0.0, 1.0, 2.0, 3.0], "px")
+        @test R(D()) == ([0.0, 1.0, 2.0, 3.0], "px")
+
+        # "Other" = uncalibrated; must be handled BEFORE any "#" int-parsing
+        out = @test_logs (:warn, r"uncalibrated") match_mode = :any R(
+            D("ScalingXType" => "2", "ScalingXScalingFile" => "Other",
+              "ScalingXUnit" => "nm"))
+        @test out == ([0.0, 1.0, 2.0, 3.0], "px")
+
+        # out-of-bounds / malformed / count-mismatch embedded refs => warn + fallback
+        @test_logs (:warn, r"out of bounds") match_mode = :any R(
+            D("ScalingXType" => "2", "ScalingXScalingFile" => "#999999,4"))
+        @test_logs (:warn, r"cannot parse") match_mode = :any R(
+            D("ScalingXType" => "2", "ScalingXScalingFile" => "#abc"))
+        @test_logs (:warn, r"does not match") match_mode = :any R(
+            D("ScalingXType" => "2", "ScalingXScalingFile" => "#600,3"))
+
+        # type=2 promised a table but no ref given => warn + fallback
+        @test_logs (:warn, r"no Scaling") match_mode = :any R(D("ScalingXType" => "2"))
+
+        # unknown ScalingXType => warn + linear (not an error)
+        @test_logs (:warn, r"unknown") match_mode = :any R(D("ScalingXType" => "5"))
+
+        # external sidecar: present and well-sized => used; missing or
+        # wrong-sized => warn + fallback
+        dir = mktempdir()
+        write(joinpath(dir, "wl.cal"),
+              collect(reinterpret(UInt8, htol.(Float32[1, 2, 3, 4]))))
+        @test R(D("ScalingXType" => "2", "ScalingXScalingFile" => "wl.cal",
+                  "ScalingXUnit" => "nm"); dir) == ([1.0, 2.0, 3.0, 4.0], "nm")
+        @test_logs (:warn, r"not found") match_mode = :any R(
+            D("ScalingXType" => "2", "ScalingXScalingFile" => "nope.cal"); dir)
+        write(joinpath(dir, "bad.cal"), zeros(UInt8, 10))
+        @test_logs (:warn, r"wrong size") match_mode = :any R(
+            D("ScalingXType" => "2", "ScalingXScalingFile" => "bad.cal"); dir)
+    end
+
 end
