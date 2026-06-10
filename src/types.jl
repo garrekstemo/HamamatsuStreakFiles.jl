@@ -69,8 +69,8 @@ Base.size(s::AbstractStreakImage) = size(s.counts)
 function Base.show(io::IO, s::StreakImage)
     print(io, "StreakImage(", length(s.wavelength), "×", length(s.time))
     if !isempty(s.wavelength)
-        lo, hi = extrema((s.wavelength[1], s.wavelength[end]))
-        print(io, ", ", round(lo, digits=1), "–", round(hi, digits=1), " ", s.xunits)
+        print(io, ", ", round(s.wavelength[1], digits=1), "–",
+              round(s.wavelength[end], digits=1), " ", s.xunits)
     end
     if !isempty(s.time)
         print(io, ", ", round(s.time[1], digits=2), "–",

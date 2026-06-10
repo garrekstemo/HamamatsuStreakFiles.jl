@@ -30,6 +30,7 @@ using Aqua
         compact = sprint(show, s)
         @test contains(compact, "StreakImage(3×2")
         @test contains(compact, "nm")
+        @test contains(compact, "662.4–395.2")   # storage order, not sorted
         @test !contains(compact, '\n')
 
         full = sprint(show, MIME("text/plain"), s)
