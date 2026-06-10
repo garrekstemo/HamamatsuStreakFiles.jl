@@ -158,4 +158,38 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
             bt, HamamatsuStreakFiles._read_header(bt))
     end
 
+    @testset "INI comment parser" begin
+        parse_comment = HamamatsuStreakFiles._parse_comment
+
+        meta = parse_comment("[A],x=1,y=\"two, three\"[B],z=\"a=b[c]\",w=4")
+        @test meta["A"]["x"] == "1"
+        @test meta["A"]["y"] == "two, three"     # quoted comma preserved
+        @test meta["B"]["z"] == "a=b[c]"         # quoted '=' and '[' preserved
+        @test meta["B"]["w"] == "4"
+
+        # butting sections after an unquoted value (real HPD-TA pattern:
+        # "[Grabber],Type=5,SubType=0[DisplayLUT],EntrySize=4")
+        meta2 = parse_comment("[Grabber],Type=5,SubType=0[DisplayLUT],EntrySize=4")
+        @test meta2["Grabber"]["SubType"] == "0"
+        @test meta2["DisplayLUT"]["EntrySize"] == "4"
+
+        # keys with spaces; unquoted values with spaces
+        meta3 = parse_comment("[Streak camera],Time Range=\"50 ns\",Mode=\"Operate\"" *
+                              "[Acquisition],ExposureTime=14 ms,AcqMode=3")
+        @test meta3["Streak camera"]["Time Range"] == "50 ns"
+        @test meta3["Streak camera"]["Mode"] == "Operate"
+        @test meta3["Acquisition"]["ExposureTime"] == "14 ms"
+        @test meta3["Acquisition"]["AcqMode"] == "3"
+
+        # lenient: CRLF, trailing padding/NULs, unterminated quote, empty input
+        meta4 = parse_comment("[A],x=1,\r\n[B],y=\"unterminated")
+        @test meta4["A"]["x"] == "1"
+        @test meta4["B"]["y"] == "unterminated"
+        @test parse_comment("[A],x=1" * " "^20 * "\0\0")["A"]["x"] == "1"
+        @test parse_comment("") == Dict{String, Dict{String, String}}()
+
+        # pairs before any section header are dropped, not a crash
+        @test isempty(parse_comment("x=1,y=2"))
+    end
+
 end
