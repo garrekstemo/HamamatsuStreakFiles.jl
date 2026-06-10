@@ -256,4 +256,60 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
             D("ScalingXType" => "2", "ScalingXScalingFile" => "bad.cal"); dir)
     end
 
+    @testset "datetime parsing" begin
+        P = HamamatsuStreakFiles._parse_datetime
+        @test P("2026/06/02", "13:17:16.967") == DateTime(2026, 6, 2, 13, 17, 16)
+        @test P("02.06.2026", "13:17:16") == DateTime(2026, 6, 2, 13, 17, 16)  # day-first
+        @test P("2026/06/02", "") == DateTime(2026, 6, 2)
+        @test P("", "13:17:16") == DateTime(1)
+        @test P("garbage", "13:17:16") == DateTime(1)
+        @test P("2026/13/40", "00:00:00") == DateTime(1)   # invalid fields, no throw
+    end
+
+    @testset "StreakImage(path) round-trip" begin
+        path = write_img(make_img())
+        s = StreakImage(path)
+
+        @test size(s) == (4, 3)
+        @test s.wavelength == [700.0, 690.0, 680.0, 670.0]   # descending preserved
+        @test s.wavelength[1] > s.wavelength[end]
+        @test s.time == [0.0, 2.0, 4.0]
+        @test s.counts[:, 1] == [1.0, 2.0, 3.0, 4.0]          # axis/matrix alignment
+        @test s.counts[1, 2] == 5.0
+        @test s.xunits == "nm"
+        @test s.yunits == "ns"
+        @test s.zunits == "Count"
+        @test s.date == DateTime(2026, 6, 2, 13, 17, 16)
+        @test s.software == "HPD-TA"
+        @test s.camera == "C11440-36U"
+        @test s.streak_device == "C10910"
+        @test s.time_range == "50 ns"
+        @test s.center_wavelength == 554.969
+        @test s.grating == "50 g/mm"
+        @test s.exposure == "14 ms"
+        @test s.n_exposures == 100
+        @test s.metadata["Acquisition"]["areSource"] == "0,0,4,3"
+
+        # AbstractString path arguments (SubString breaks String-typed signatures)
+        sub = SubString(path, 1, length(path))
+        @test StreakImage(sub).camera == "C11440-36U"
+
+        # sentinels when metadata sections are absent
+        bare = StreakImage(write_img(make_img(
+            comment = "[Scaling],ScalingXType=1,ScalingYType=1")))
+        @test bare.camera == ""
+        @test bare.software == ""
+        @test bare.date == DateTime(1)
+        @test bare.n_exposures == 0
+        @test bare.center_wavelength == 0.0
+        @test bare.xunits == "px"
+        @test bare.wavelength == [0.0, 1.0, 2.0, 3.0]
+
+        # error paths surface from the lower layers
+        @test_throws ArgumentError StreakImage(write_img(make_img(truncate_at = 100)))
+        @test_throws ArgumentError StreakImage(write_img(make_img(magic = "XM")))
+        @test_throws ArgumentError StreakImage(write_img(make_img(type = 1)))
+        @test_throws SystemError StreakImage("this_file_does_not_exist.img")
+    end
+
 end
