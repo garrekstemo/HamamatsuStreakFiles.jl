@@ -78,7 +78,8 @@ end
 # bounds- and length-checked; every failure path warns and degrades to
 # _linear_axis rather than throwing — the image itself is still valid.
 function _resolve_axis(bytes::Vector{UInt8}, scaling::Dict{String, String},
-                       axis::String, n::Int; dir::String = "")
+                       axis::String, n::Int, fname::AbstractString;
+                       dir::String = "")
     typecode = something(tryparse(Int, get(scaling, "Scaling$(axis)Type", "")), 0)
     ref = get(scaling, "Scaling$(axis)ScalingFile", "")
     unit = get(scaling, "Scaling$(axis)Unit", "")
@@ -86,18 +87,18 @@ function _resolve_axis(bytes::Vector{UInt8}, scaling::Dict{String, String},
     if typecode == 1
         return _linear_axis(scaling, axis, n)
     elseif typecode != 0 && typecode != 2
-        @warn "Hamamatsu .img: unknown Scaling$(axis)Type $typecode; using linear axis"
+        @warn "$fname: unknown Scaling$(axis)Type $typecode; using linear axis"
         return _linear_axis(scaling, axis, n)
     end
 
     if isempty(ref)
-        typecode == 2 && @warn "Hamamatsu .img: Scaling$(axis)Type=2 but no " *
+        typecode == 2 && @warn "$fname: Scaling$(axis)Type=2 but no " *
             "Scaling$(axis)ScalingFile; using linear axis"
         return _linear_axis(scaling, axis, n)
     end
 
     if startswith(ref, "Other")
-        @warn "Hamamatsu .img: uncalibrated $axis axis (ScalingFile=\"Other\"); " *
+        @warn "$fname: uncalibrated $axis axis (ScalingFile=\"Other\"); " *
             "using linear axis"
         return _linear_axis(scaling, axis, n)
     end
@@ -107,13 +108,13 @@ function _resolve_axis(bytes::Vector{UInt8}, scaling::Dict{String, String},
         off = length(parts) == 2 ? tryparse(Int, parts[1]) : nothing
         cnt = length(parts) == 2 ? tryparse(Int, parts[2]) : nothing
         if off === nothing || cnt === nothing
-            @warn "Hamamatsu .img: cannot parse scaling reference $(repr(ref)); " *
+            @warn "$fname: cannot parse scaling reference $(repr(ref)); " *
                 "using linear axis"
         elseif cnt != n
-            @warn "Hamamatsu .img: scaling array count $cnt does not match axis " *
+            @warn "$fname: scaling array count $cnt does not match axis " *
                 "length $n; using linear axis"
         elseif off < 0 || off > length(bytes) || off + 4cnt > length(bytes)
-            @warn "Hamamatsu .img: scaling array out of bounds " *
+            @warn "$fname: scaling array out of bounds " *
                 "(offset $off, count $cnt); using linear axis"
         else
             return Float64.(ltoh.(reinterpret(Float32, bytes[off+1:off+4cnt]))), unit
@@ -129,10 +130,10 @@ function _resolve_axis(bytes::Vector{UInt8}, scaling::Dict{String, String},
         if length(raw) == 4n
             return Float64.(ltoh.(reinterpret(Float32, raw))), unit
         end
-        @warn "Hamamatsu .img: external scaling file $(repr(ref)) has wrong size; " *
+        @warn "$fname: external scaling file $(repr(ref)) has wrong size; " *
             "using linear axis"
     else
-        @warn "Hamamatsu .img: external scaling file $(repr(ref)) not found; " *
+        @warn "$fname: external scaling file $(repr(ref)) not found; " *
             "using linear axis"
     end
     return _linear_axis(scaling, axis, n)
@@ -175,7 +176,7 @@ a warning.
 
 # Throws
 - `ArgumentError` for malformed files: bad magic, truncated header/comment/image,
-  compressed (`type=1`) or unknown pixel type.
+  compressed (`type=1`) or unknown pixel type. Error messages name the file.
 - `SystemError` if the file cannot be read from disk.
 
 # Example
@@ -187,18 +188,19 @@ s.counts[:, 1]     # spectrum at the first time bin
 ```
 """
 function StreakImage(path::AbstractString)
+    fname = basename(path)
     bytes = read(path)
-    hdr = _read_header(bytes)
+    hdr = _read_header(bytes, fname)
     64 + hdr.comment_len <= length(bytes) || throw(ArgumentError(
-        "Hamamatsu .img: comment truncated (need $(64 + hdr.comment_len) bytes, " *
+        "$fname: .img comment truncated (need $(64 + hdr.comment_len) bytes, " *
         "file has $(length(bytes)))"))
     meta = _parse_comment(String(bytes[65:64 + hdr.comment_len]))
-    counts = _read_image(bytes, hdr)
+    counts = _read_image(bytes, hdr, fname)
 
     scaling = get(meta, "Scaling", Dict{String, String}())
     dir = dirname(abspath(path))
-    wavelength, xunits = _resolve_axis(bytes, scaling, "X", hdr.width; dir)
-    time, yunits = _resolve_axis(bytes, scaling, "Y", hdr.height; dir)
+    wavelength, xunits = _resolve_axis(bytes, scaling, "X", hdr.width, fname; dir)
+    time, yunits = _resolve_axis(bytes, scaling, "Y", hdr.height, fname; dir)
 
     app = get(meta, "Application", Dict{String, String}())
     acq = get(meta, "Acquisition", Dict{String, String}())

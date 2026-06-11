@@ -113,7 +113,7 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
 
     @testset "binary header" begin
         b = make_img()
-        hdr = HamamatsuStreakFiles._read_header(b)
+        hdr = HamamatsuStreakFiles._read_header(b, "test.img")
         @test hdr.comment_len == COMMENT_LEN
         @test hdr.width == 4
         @test hdr.height == 3
@@ -125,15 +125,15 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         @test hdr.width isa Int
         @test hdr.height isa Int
 
-        @test_throws ArgumentError HamamatsuStreakFiles._read_header(make_img(magic="XM"))
-        @test_throws ArgumentError HamamatsuStreakFiles._read_header(make_img()[1:40])
-        @test HamamatsuStreakFiles._read_header(make_img(magic="IM\0")).width == 4   # trailing NUL tolerated
+        @test_throws ArgumentError HamamatsuStreakFiles._read_header(make_img(magic="XM"), "test.img")
+        @test_throws ArgumentError HamamatsuStreakFiles._read_header(make_img()[1:40], "test.img")
+        @test HamamatsuStreakFiles._read_header(make_img(magic="IM\0"), "test.img").width == 4   # trailing NUL tolerated
     end
 
     @testset "image data" begin
         b = make_img()                      # pixels 1:12, width 4, height 3
-        hdr = HamamatsuStreakFiles._read_header(b)
-        counts = HamamatsuStreakFiles._read_image(b, hdr)
+        hdr = HamamatsuStreakFiles._read_header(b, "test.img")
+        counts = HamamatsuStreakFiles._read_image(b, hdr, "test.img")
         @test counts isa Matrix{Float64}
         @test size(counts) == (4, 3)
         # width (wavelength) is the fast axis: first stored values fill column 1
@@ -143,20 +143,20 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
 
         # UInt8 (type=0) and UInt32 (type=3) pixel dtypes
         b8 = make_img(type=0)
-        h8 = HamamatsuStreakFiles._read_header(b8)
-        @test HamamatsuStreakFiles._read_image(b8, h8)[2, 1] == 2.0
+        h8 = HamamatsuStreakFiles._read_header(b8, "test.img")
+        @test HamamatsuStreakFiles._read_image(b8, h8, "test.img")[2, 1] == 2.0
         b32 = make_img(type=3, pixels=collect(70000:70011))
-        h32 = HamamatsuStreakFiles._read_header(b32)
-        @test HamamatsuStreakFiles._read_image(b32, h32)[1, 1] == 70000.0
+        h32 = HamamatsuStreakFiles._read_header(b32, "test.img")
+        @test HamamatsuStreakFiles._read_image(b32, h32, "test.img")[1, 1] == 70000.0
 
         # compressed type=1 unsupported; unknown codes rejected
-        @test_throws ArgumentError HamamatsuStreakFiles._pixel_type(1)
-        @test_throws ArgumentError HamamatsuStreakFiles._pixel_type(7)
+        @test_throws ArgumentError HamamatsuStreakFiles._pixel_type(1, "test.img")
+        @test_throws ArgumentError HamamatsuStreakFiles._pixel_type(7, "test.img")
 
         # truncated image data
         bt = make_img(truncate_at = 64 + COMMENT_LEN + 5)
         @test_throws ArgumentError HamamatsuStreakFiles._read_image(
-            bt, HamamatsuStreakFiles._read_header(bt))
+            bt, HamamatsuStreakFiles._read_header(bt, "test.img"), "test.img")
     end
 
     @testset "INI comment parser" begin
@@ -204,7 +204,7 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         b = make_img()
         D(pairs...) = Dict{String, String}(pairs...)
         R(scaling; n=4, dir=mktempdir()) =
-            HamamatsuStreakFiles._resolve_axis(b, scaling, "X", n; dir)
+            HamamatsuStreakFiles._resolve_axis(b, scaling, "X", n, "test.img"; dir)
 
         # embedded "#offset,count" table (descending values preserved)
         @test R(D("ScalingXType" => "2", "ScalingXUnit" => "nm",
@@ -312,6 +312,27 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         @test_throws ArgumentError StreakImage(write_img(make_img(magic = "XM")))
         @test_throws ArgumentError StreakImage(write_img(make_img(type = 1)))
         @test_throws SystemError StreakImage("this_file_does_not_exist.img")
+
+        # errors name the offending file (sibling JASCOFiles convention),
+        # so a failure in a batch of files identifies its source
+        msg(f) = try f(); "" catch e; sprint(showerror, e) end
+        badmagic = write_img(make_img(magic = "XM"))
+        @test contains(msg(() -> StreakImage(badmagic)), basename(badmagic))
+        @test contains(msg(() -> StreakImage(badmagic)), "not a Hamamatsu .img file")
+        shortfile = write_img(make_img()[1:40])
+        @test contains(msg(() -> StreakImage(shortfile)), basename(shortfile))
+        truncated = write_img(make_img(truncate_at = 100))
+        @test contains(msg(() -> StreakImage(truncated)), basename(truncated))
+        compressed = write_img(make_img(type = 1))
+        @test contains(msg(() -> StreakImage(compressed)), basename(compressed))
+        imgcut = write_img(make_img(truncate_at = 64 + COMMENT_LEN + 5))
+        @test contains(msg(() -> StreakImage(imgcut)), basename(imgcut))
+
+        # scaling warnings name the file too
+        uncal = write_img(make_img(xref = "Other"))
+        @test_logs (:warn, Regex(basename(uncal))) match_mode = :any StreakImage(uncal)
+        nofile = write_img(make_img(xref = "missing.cal"))
+        @test_logs (:warn, Regex(basename(nofile))) match_mode = :any StreakImage(nofile)
     end
 
     @testset "Makie extension" begin
