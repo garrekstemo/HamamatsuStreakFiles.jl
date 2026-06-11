@@ -1,6 +1,21 @@
 # HamamatsuStreakFiles.jl
 
+[![CI](https://github.com/garrekstemo/HamamatsuStreakFiles.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/garrekstemo/HamamatsuStreakFiles.jl/actions/workflows/CI.yml)
+[![docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://garrekstemo.github.io/HamamatsuStreakFiles.jl/dev/)
+[![codecov](https://codecov.io/gh/garrekstemo/HamamatsuStreakFiles.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/garrekstemo/HamamatsuStreakFiles.jl)
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![license](https://img.shields.io/github/license/garrekstemo/HamamatsuStreakFiles.jl)](LICENSE)
+
 Read Hamamatsu HPD-TA / HiPic `.img` (ITEX) streak-camera files in Julia.
+
+## Installation
+
+```julia
+using Pkg
+Pkg.add("HamamatsuStreakFiles")
+```
+
+## Usage
 
 ```julia
 using HamamatsuStreakFiles
@@ -71,6 +86,16 @@ lines(s.time, band)                       # decay near 450 nm
 | Uncalibrated (`"Other"`) / linear axes | ✅ (linear or pixel-index fallback) |
 | Compressed images (`type=1`) | ❌ not supported (no open decompressor exists) |
 | `.his` image sequences | ❌ planned |
+
+Malformed or foreign `.img` files (the extension is shared by several
+unrelated vendor formats) fail fast with an error naming the file —
+never silent garbage.
+
+## Documentation
+
+Full documentation, including the `.img` format guide and the public API
+reference, is at
+[garrekstemo.github.io/HamamatsuStreakFiles.jl](https://garrekstemo.github.io/HamamatsuStreakFiles.jl/dev/).
 
 Part of a family of vendor file readers:
 [JASCOFiles.jl](https://github.com/garrekstemo/JASCOFiles.jl),
