@@ -16,6 +16,7 @@ HamamatsuStreakFilesMakieExt = "Makie"
 Aqua = "0.8"
 Dates = "1"
 Makie = "0.20, 0.21, 0.22, 0.23, 0.24"
+Test = "1"
 julia = "1.10"
 
 [extras]

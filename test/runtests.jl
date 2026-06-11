@@ -60,7 +60,7 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
 @testset "HamamatsuStreakFiles" begin
 
     @testset "Code quality (Aqua.jl)" begin
-        Aqua.test_all(HamamatsuStreakFiles; deps_compat = (check_extras = false,))
+        Aqua.test_all(HamamatsuStreakFiles)
     end
 
     @testset "StreakImage type" begin
