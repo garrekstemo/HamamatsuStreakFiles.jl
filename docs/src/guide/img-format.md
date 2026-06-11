@@ -53,7 +53,7 @@ The Makie extension flips display copies only.
 ## Dates
 
 `[Application]` `Date`/`Time` separators vary by locale (`/` or `.`) and may be day-first or year-first; the parser handles both and never throws.
-An unparseable date gives the sentinel `DateTime(1)` (year 0001), with the raw strings still available in `s.metadata["Application"]`.
+An unparseable or absent date gives `nothing`, with the raw strings still available in `s.metadata["Application"]`.
 
 ## Errors
 

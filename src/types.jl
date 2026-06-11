@@ -19,7 +19,7 @@ plus instrument metadata. Construct with `StreakImage(path)`.
   `counts[i, j]` is the signal at `wavelength[i]`, `time[j]`.
 - `xunits::String`, `yunits::String`, `zunits::String` — axis unit labels
   (e.g. `"nm"`, `"ns"`, `"Count"`).
-- `date::DateTime` — acquisition timestamp (`[Application]` Date + Time).
+- `date::Union{DateTime, Nothing}` — acquisition timestamp (`[Application]` Date + Time), or `nothing` when absent/unparseable.
 - `software::String` — acquisition software (`[Application]` Software), e.g. `"HPD-TA"`.
 - `camera::String` — readout camera model (`[Camera]` CameraName).
 - `streak_device::String` — streak unit model (`[Streak camera]` DeviceName).
@@ -41,7 +41,7 @@ plus instrument metadata. Construct with `StreakImage(path)`.
 | `String`   | `""` |
 | `Float64`  | `0.0` |
 | `Int`      | `0` |
-| `DateTime` | `DateTime(1)` (year 0001) |
+| `DateTime` | `nothing` |
 
 For strict "present vs. missing" checks, inspect the raw `metadata` dict.
 """
@@ -52,7 +52,7 @@ struct StreakImage <: AbstractStreakImage
     xunits::String
     yunits::String
     zunits::String
-    date::DateTime
+    date::Union{DateTime, Nothing}
     software::String
     camera::String
     streak_device::String
@@ -102,7 +102,7 @@ function Base.show(io::IO, ::MIME"text/plain", s::StreakImage)
         println(io, "  Exposure:     ", s.exposure,
                 s.n_exposures > 0 ? " × " * string(s.n_exposures) : "")
     end
-    if s.date != DateTime(1)
+    if s.date !== nothing
         println(io, "  Acquired:     ", Dates.format(s.date, "yyyy-mm-dd HH:MM:SS"))
     end
     print(io, "  Metadata:     ", length(s.metadata), " sections")

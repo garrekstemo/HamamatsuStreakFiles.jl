@@ -83,7 +83,7 @@ s.metadata["Spectrograph"]["Grating"]       # "50 g/mm"
 
 Values are stored as raw strings — the hoisted struct fields above cover the common ones, and `metadata` keeps everything else (trigger settings, LUT state, plug-in fields, …).
 
-Fields missing from a file get sentinel values (`""`, `0`, `0.0`, or `DateTime(1)` for the date); inspect `s.metadata` for strict present-vs-missing checks.
+Fields missing from a file get sentinel values (`""`, `0`, `0.0`) — except the date, which is `nothing`; inspect `s.metadata` for strict present-vs-missing checks.
 
 ## Plotting
 

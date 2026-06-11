@@ -101,7 +101,7 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
 
         # All-sentinel image: optional lines are suppressed, no year-0001 leak
         bare = StreakImage(Float64[], Float64[], zeros(0, 0),
-                           "", "", "", DateTime(1),
+                           "", "", "", nothing,
                            "", "", "", "", 0.0, "", "", 0,
                            Dict{String, Dict{String, String}}())
         bare_show = sprint(show, MIME("text/plain"), bare)
@@ -262,10 +262,10 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
         @test P("2026/06/02", "13:17:16.967") == DateTime(2026, 6, 2, 13, 17, 16)
         @test P("02.06.2026", "13:17:16") == DateTime(2026, 6, 2, 13, 17, 16)  # day-first
         @test P("2026/06/02", "") == DateTime(2026, 6, 2)
-        @test P("", "13:17:16") == DateTime(1)
-        @test P("garbage", "13:17:16") == DateTime(1)
-        @test P("2026/13/40", "00:00:00") == DateTime(1)   # invalid fields, no throw
-        @test P("26/06/02", "13:17:16") == DateTime(1)     # 2-digit year rejected
+        @test P("", "13:17:16") === nothing
+        @test P("garbage", "13:17:16") === nothing
+        @test P("2026/13/40", "00:00:00") === nothing   # invalid fields, no throw
+        @test P("26/06/02", "13:17:16") === nothing     # 2-digit year rejected
     end
 
     @testset "StreakImage(path) round-trip" begin
@@ -301,7 +301,7 @@ write_img(bytes) = (path = tempname() * ".img"; write(path, bytes); path)
             comment = "[Scaling],ScalingXType=1,ScalingYType=1")))
         @test bare.camera == ""
         @test bare.software == ""
-        @test bare.date == DateTime(1)
+        @test bare.date === nothing
         @test bare.n_exposures == 0
         @test bare.center_wavelength == 0.0
         @test bare.xunits == "px"

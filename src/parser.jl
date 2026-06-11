@@ -142,23 +142,23 @@ end
 # Defensive [Application] Date/Time parsing. Separators vary by locale
 # ('/' or '.') and the order may be day-first (DD/MM/YYYY) or year-first
 # (YYYY/MM/DD); the 4-digit field is the year, the middle field is the month
-# in both orders. Returns the DateTime(1) sentinel when unparseable — the raw
+# in both orders. Returns nothing when unparseable — the raw
 # strings always remain available in metadata["Application"].
 function _parse_datetime(datestr::AbstractString, timestr::AbstractString)
     parts = split(replace(datestr, '.' => '/'), '/')
-    length(parts) == 3 || return DateTime(1)
+    length(parts) == 3 || return nothing
     nums = [tryparse(Int, p) for p in parts]
-    any(isnothing, nums) && return DateTime(1)
+    any(isnothing, nums) && return nothing
     a, b, c = nums
     y, m, d = a > 999 ? (a, b, c) : (c, b, a)
-    y >= 1900 || return DateTime(1)
+    y >= 1900 || return nothing
     hms = match(r"^(\d+):(\d+):(\d+)", timestr)
     h, mi, sec = hms === nothing ? (0, 0, 0) :
         (parse(Int, hms[1]), parse(Int, hms[2]), parse(Int, hms[3]))
     try
         return DateTime(y, m, d, h, mi, sec)
     catch
-        return DateTime(1)
+        return nothing
     end
 end
 
