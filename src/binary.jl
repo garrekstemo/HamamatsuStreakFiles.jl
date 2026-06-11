@@ -15,11 +15,11 @@ struct ImgHeader
     type::Int
 end
 
-function _read_header(bytes::Vector{UInt8})
+function _read_header(bytes::Vector{UInt8}, fname::AbstractString)
     length(bytes) >= 64 || throw(ArgumentError(
-        "Hamamatsu .img: file too short for 64-byte header ($(length(bytes)) bytes)"))
+        "$fname: file too short for the 64-byte .img header ($(length(bytes)) bytes)"))
     (bytes[1] == UInt8('I') && bytes[2] == UInt8('M')) || throw(ArgumentError(
-        "Hamamatsu .img: bad magic (expected \"IM\")"))
+        "$fname: not a Hamamatsu .img file (bad magic; expected \"IM\")"))
     return ImgHeader(
         Int(_read_le(UInt16, bytes, 2)),
         Int(_read_le(UInt16, bytes, 4)),
@@ -35,25 +35,25 @@ end
 # 2=UInt16, 3=UInt32. There is no signed-int or Float32 *image* dtype; Float32
 # appears only as the scaling-array element type. NOTE: this table must NOT be
 # reused for .his files, whose dataType enum differs (1 means UInt8 there).
-function _pixel_type(code::Int)
+function _pixel_type(code::Int, fname::AbstractString)
     code == 0 && return UInt8
     code == 2 && return UInt16
     code == 3 && return UInt32
     code == 1 && throw(ArgumentError(
-        "Hamamatsu .img: compressed image data (type=1) is not supported"))
-    throw(ArgumentError("Hamamatsu .img: unknown pixel type code $code"))
+        "$fname: compressed .img image data (type=1) is not supported"))
+    throw(ArgumentError("$fname: unknown .img pixel type code $code"))
 end
 
 # Read the pixel block into counts[wavelength, time] (Float64). The data is
 # stored row-major with width (wavelength) as the fast axis, so filling a
 # (width, height) matrix in Julia's column-major linear order is a direct copy.
-function _read_image(bytes::Vector{UInt8}, hdr::ImgHeader)
-    T = _pixel_type(hdr.type)
+function _read_image(bytes::Vector{UInt8}, hdr::ImgHeader, fname::AbstractString)
+    T = _pixel_type(hdr.type, fname)
     npix = hdr.width * hdr.height
     start = 64 + hdr.comment_len
     nbytes = npix * sizeof(T)
     start + nbytes <= length(bytes) || throw(ArgumentError(
-        "Hamamatsu .img: image data truncated (need $(start + nbytes) bytes, " *
+        "$fname: image data truncated (need $(start + nbytes) bytes, " *
         "file has $(length(bytes)))"))
     raw = reinterpret(T, bytes[start+1:start+nbytes])
     counts = Matrix{Float64}(undef, hdr.width, hdr.height)
