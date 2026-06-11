@@ -1,7 +1,7 @@
 # HamamatsuStreakFiles.jl
 
 Standalone reader for Hamamatsu HPD-TA/HiPic `.img` (ITEX) streak-camera files.
-Sibling of JASCOFiles.jl / RigakuFiles.jl; not yet registered.
+Sibling of JASCOFiles.jl / RigakuFiles.jl; registered in General (v0.1.0).
 
 - Design spec: `docs/superpowers/specs/2026-06-09-hamamatsu-img-reader-design.md`
   (byte layout, dtype table, scaling resolution rules — authoritative).
