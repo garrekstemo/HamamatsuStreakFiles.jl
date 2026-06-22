@@ -166,7 +166,7 @@ end
 ```
 
 - **Sentinels for missing fields** (matches the documented sibling table): `String → ""`,
-  `Float64 → 0.0`, `Int → 0`, `DateTime → DateTime(1)`.
+  `Float64 → 0.0`, `Int → 0`, `DateTime → nothing`.
 - The **hoisted field set above is FROZEN** as the minimal lab-relevant subset. Everything else
   stays in `metadata` only — do not keep growing hoisted fields.
 - `time_range` and `exposure` are intentionally kept as **raw strings** because they carry a unit
@@ -181,7 +181,7 @@ end
   `RigakuFile(path)`, `JASCOSpectrum(path)`). Accept any `AbstractString` (e.g. `SubString`).
 - **Date parsing is defensive.** `[Application]` `Date`/`Time` use locale-variable separators
   (`/` or `.`) and are **day-first** (`DD?MM?YYYY` per RosettaSciIO's transform), not ISO/US order.
-  On any parse failure: keep the raw strings in `metadata` and set `date = DateTime(1)` — **never throw**.
+  On any parse failure: keep the raw strings in `metadata` and set `date = nothing` — **never throw**.
 
 ## 5. Package layout
 
@@ -245,7 +245,7 @@ All `ArgumentError` with a specific message unless noted; warnings degrade grace
 | scaling `#offset,count` out of bounds (`offset+count*4 > filesize`) | **warn + linear/pixel fallback** (image is still valid) |
 | `ScalingXScalingFile == "Other"` / external-missing / empty | **warn + linear/pixel fallback** (not an error) |
 | unknown `ScalingXType` | **warn + linear fallback** |
-| date unparseable | raw kept in `metadata`, `date = DateTime(1)`, **no throw** |
+| date unparseable | raw kept in `metadata`, `date = nothing`, **no throw** |
 
 ## 9. Tests (`test/runtests.jl`)
 
@@ -261,7 +261,7 @@ Cases:
 - **Quote-aware INI** — values with embedded commas, `=`, and `[`; butting `[Section]` blocks.
 - **Scaling fallbacks** — `"Other"`, missing external file, empty, and unknown `ScalingXType` → warn + linear/pixel.
 - **Error paths** — bad magic, header-truncated, image-truncated, scaling-offset OOB, compressed `type=1`, unknown dtype.
-- **Date** — locale separators, day-first, and unparseable → `DateTime(1)` + raw kept (use `@test_logs` for the warn).
+- **Date** — locale separators, day-first, and unparseable → `nothing` + raw kept (use `@test_logs` for the warn).
 - **Show methods** — compact (one line) and MIME (dims/ranges/instrument fields).
 - **Type hierarchy** — `StreakImage <: AbstractStreakImage`.
 - **`AbstractString` path** — `SubString` argument works.
