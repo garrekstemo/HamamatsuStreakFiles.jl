@@ -3,8 +3,7 @@
 Standalone reader for Hamamatsu HPD-TA/HiPic `.img` (ITEX) streak-camera files.
 
 - `StreakImage(path)` is the only public entry point; internals are
-  underscore-prefixed and unexported. Browse `src/` (`parser.jl`, `binary.jl`,
-  `types.jl`) for the implementation; usage examples are in `README.md`.
+  underscore-prefixed and unexported.
 - Authoritative byte-layout / dtype-table / scaling spec:
   `docs/superpowers/specs/2026-06-09-hamamatsu-img-reader-design.md`.
 - Wavelength axis preserves on-disk order (commonly DESCENDING). Never sort or
