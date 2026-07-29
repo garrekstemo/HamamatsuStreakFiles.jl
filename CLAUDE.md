@@ -14,4 +14,4 @@ Standalone reader for Hamamatsu HPD-TA/HiPic `.img` (ITEX) streak-camera files.
   (code 1 = UInt8). See the note in `src/binary.jl`.
 - Tests are synthetic (`make_img` builder in `test/runtests.jl`); no real
   instrument file is committed. Real-file ground truth lives at
-  `QPSTools.jl/data/PL/15K.img`.
+  `~/Data/PL/15K.img`.
